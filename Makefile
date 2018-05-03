@@ -1,6 +1,6 @@
 # Protocoale de comunicatii
-# Laborator 7 - TCP
-# Echo Server
+# Tema 2
+# Bechir Sibel-Leila
 # Makefile
 
 CFLAGS = -Wall -g

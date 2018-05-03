@@ -1,3 +1,9 @@
+/*
+*  	Protocoale de comunicatii: 
+*  	Tema 2: Server TCP Multiplexare
+*	Bechir Sibel-Leila
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -177,6 +183,19 @@ int main(int argc, char *argv[])
 	int n, i, aux;
 	socklen_t clilen;
 
+	Data *data;
+	int dataN;
+	
+	char *token;
+	int err;
+
+	/* read data */
+	data = myread(argv[2], &dataN);
+
+	/* print data */
+	printData(data, dataN);
+
+
 	// multimea de citire folosita in select()
 	fd_set read_fds;
 
@@ -272,13 +291,41 @@ int main(int argc, char *argv[])
 							fdmax = newsockfd;
 						}
 						
-						printf("Noua conexiune de la %s, port %d, socket_client %d\n ", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), newsockfd);
+						printf("Noua conexiune de la %s, port %d, socket_client %d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), newsockfd);
 					} else {
 						// am primit date pe unul din socketii cu care vorbesc cu clientii -> actiunea serverului: recv()
 						memset(buffer, 0, BUFLEN);
 						n = recv(i, buffer, sizeof(buffer), 0);
 
-						if (n == 0) {
+						if (n > 0) {
+							printf ("Am primit de la clientul de pe socketul %d, mesajul: %s", i, buffer);
+							printf("\tGonna send to %d, message: %s", i, buffer);
+							
+							token = strtok(buffer, " ");
+
+							if (!strcmp("login", token)) {
+								err = login(token, data, n);
+							} else if (!strcmp("logout", token)) {
+								logout();
+							} else if (!strcmp("listsold", token)) {
+								listsold();
+							} else if (!strcmp("transfer", token)) {
+								transfer(token);
+							} else if (!strcmp("quit", token)) {
+								quit();
+							}
+
+							if (err < 0) {
+								getError(err);
+								err = 0;
+							}
+
+							aux = send(i, buffer, strlen(buffer), 0);
+							if (aux < 0) {
+								printf("ERROR in send\n");
+								exit(-1);
+							}
+						} else if (n == 0) {
 							// conexiunea s-a inchis
 							printf("selectserver: socket %d hung up\n", i);
 							
@@ -286,7 +333,7 @@ int main(int argc, char *argv[])
 
 							// scoatem din multimea de citire socketul
 							FD_CLR(i, &read_fds); 
-						} else if (n < 0) {
+						} else { // n < 0
 							printf("ERROR in recv\n");
 							
 							close(i); 
@@ -294,16 +341,6 @@ int main(int argc, char *argv[])
 							FD_CLR(i, &read_fds); // scoatem din multimea de citire socketul pe care 
 							
 							exit(-1);
-							
-						} else { // recv > 0
-							printf ("Am primit de la clientul de pe socketul %d, mesajul: %s", i, buffer);
-							printf("\tGonna send to %d, message: %s", i, buffer);
-							
-							aux = send(i, buffer, strlen(buffer), 0);
-							if (aux < 0) {
-								printf("ERROR in send\n");
-								exit(-1);
-							}
 						}
 					} 
 				}
