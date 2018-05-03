@@ -11,10 +11,10 @@ PORT =
 # Adresa IP a serverului
 IP_SERVER = 
 
-all: server client
+all: selectserver client
 
 # Compileaza server.c
-server: server.c
+selectserver: selectserver.c
 
 # Compileaza client.c
 client: client.c
@@ -23,11 +23,11 @@ client: client.c
 
 # Ruleaza serverul
 run_server:
-	./server ${IP_SERVER} ${PORT}
+	./selectserver ${IP_SERVER} ${PORT}
 
 # Ruleaza clientul 	
 run_client:
 	./client ${IP_SERVER} ${PORT}
 
 clean:
-	rm -f server client 
+	rm -f selectserver client 
