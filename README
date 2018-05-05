@@ -1,0 +1,48 @@
+-----------------------------Tema 2 - PC --------------------------------------
+Nume: Bechir Sibel-Leila
+Grupa 332CC
+
+Cuprins:
+1. Login
+2. Logout
+3. Listsold
+4. Quit
+	4.1. client
+	4.2. server
+5. Altele
+
+_________
+1. Login
+- Trimit din client un string catre server, unde il parsez.
+
+- Am o functie care primeste parametrii: stingul de parsat, un vector de structuri nr de intrari in tabela si un pointer in care voi pastra pozitia contului si intoarece un cod de eroare din enunt sau 0 ini cazul in care sunt bune numarul cardului si pinul.
+
+- De fiecare data cand se va gasi pinul voi incrementa variabila tryLogin. In cazul in care tryLogin va avea mai mult de valoarea 3, voi seta variabila lock din structura ca fiind 1.
+
+- Setez o variabila in care memorez pid-ul programului si un int numit c_id in care memorez sockaddr_in cli_addr.sin_addr
+
+__________
+2. Logout
+- Am o functie de logout care primeste parametrii si itereaza prin structura pana gaseste un id(pid) ca apoi sa seteze pos.
+
+- In cazul in care nu exista o intrare cu acel pid el va returna -1
+
+____________
+3. Listsold
+- Iteram prin vector si returnam pozitia din vector.
+
+________
+4. Quit
+	4.1. client
+	- In cazul in care clientul scrie quit va elibera socketul de pe server si se va termina rularea clientului.
+
+	4.2. server
+	- Eliberam memoria si terminam programul.
+
+__________
+5. Altele
+- Am potnit de la scheletul laboratorului 8.
+
+- Structura se afla in utils.h
+
+

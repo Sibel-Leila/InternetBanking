@@ -13,96 +13,22 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "utils.h"
+
 #define MAX_CLIENTS	5
 #define BUFLEN 1500
 
-typedef struct {
-	char *firstName;
-	char *lastName;
-	int cardNo;
-	int pin;
-	char *secretPassword;
-	double sold;
-} Data;
-
-Data* myread(char *usersDataFile, int *n)
+int login(char *token, Data* data, int n, int *pos)
 {
-	FILE *fp;
-	Data *data;
+	if (token == NULL)
+		return -4;
 
-	char *firstName, *lastName, *secretPassword;
-	int cardNo, pin;
-	double sold; 
-
-	int i;
-
-	/* open file */
-	fp = fopen(usersDataFile , "r");
-	
-	if (fp == NULL) {
-		printf("[Error] Opening input file!\n");
-		exit(-1);
-	}
-
-	/* read from file */
-	fscanf(fp, "%d", n);
-
-	/* create an matrix with data about clients */
-	data = malloc((*n) * sizeof(Data));
-
-	/* allocate buffers */
-	firstName = malloc(12 * sizeof(char));
-	lastName = malloc(12 * sizeof(char));
-	secretPassword = malloc(8 * sizeof(char));
-
-	/* read data */
-	for (i = 0; i < *n; i++) {
-		/* read data from file */
-		fscanf(fp, "%s %s %d %d %s %lf", firstName, lastName, &cardNo, &pin, secretPassword, &sold);
-
-		/* setting data buffers to structure */
-		data[i].firstName = malloc(strlen(firstName) * sizeof(char));
-		strcpy(data[i].firstName, firstName);
-
-		data[i].lastName = malloc(strlen(lastName) * sizeof(char));
-		strcpy(data[i].lastName, lastName);
-
-		data[i].cardNo = cardNo;
-		
-		data[i].pin = pin;
-
-		data[i].secretPassword = malloc(strlen(secretPassword) * sizeof(char));
-		strcpy(data[i].secretPassword, secretPassword);
-
-		data[i].sold = sold;
-	}
-
-	/* close file */
-	fclose(fp);
-
-	/* free variables */
-	free(firstName);
-	free(lastName);
-	free(secretPassword);
-	
-	/* return the vector of structure */
-	return data;
-}
-
-void printData(Data *data, int n)
-{
-	for (int i = 0; i < n; i++)
-		printf("%s ~ %s ~ %d ~ %d ~ %s ~ %.2lf\n", data[i].firstName, data[i].lastName, data[i].cardNo, data[i].pin, data[i].secretPassword, data[i].sold);	
-}
-
-int login(char *token, Data* data, int n)
-{
 	/* get cardNo */
-	token = strtok(NULL, " ");
+	token = strtok(NULL, " \n");
 	int cardNo = atoi(token);
 
 	/* get pin */	
-	token = strtok(NULL, "");
+	token = strtok(NULL, " \n");
 	int pin = atoi(token);
 
 	if (100000 > cardNo || cardNo > 1000000)
@@ -114,10 +40,17 @@ int login(char *token, Data* data, int n)
 	int i;
 	for (i = 0; i < n; i++) {
 		if (data[i].cardNo == cardNo) {
-			if (data[i].pin == pin) {
-				return i;
+			if (data[i].lock == 0) {
+				if (data[i].pin == pin) {
+					*pos = i;
+					return 0;
+				} else {
+					*pos = i;
+					return -3;
+				}
 			} else {
-				return -3;
+				*pos = i;
+				return -5;
 			}
 		}
 	}
@@ -125,55 +58,35 @@ int login(char *token, Data* data, int n)
 	return -4;
 }
 
-void logout() {}
-void listsold() {}
-void transfer(char *token) {}
-void quit() {}
-
-void getError(int err) 
+int logout(int id, Data* data, int n, int *pos)
 {
-	switch (err) {
-		case -1:
-		printf("[ERR] Clientul nu este autentificat\n");
-		break;
-
-		case -2:
-		printf("[ERR] Sesiune deja deschisa\n");
-		break;
-
-		case -3:
-		printf("[ERR] Pin gresit\n");
-		break;
-
-		case -4:
-		printf("[ERR] Numar card inexistent\n");
-		break;
-
-		case -5:
-		printf("[ERR] Card blocat\n");
-		break;
-
-		case -6:
-		printf("[ERR] Operatie esuata\n");
-		break;
-
-		case -7:
-		printf("[ERR] Deblocare esuata\n");
-		break;
-
-		case -8:
-		printf("[ERR] Fonduri insuficiente\n");
-		break;
-
-		case -9:
-		printf("[ERR] Operatie anulata\n");
-		break;
-
-		case -10:
-		printf("[ERR] Eroare la apel nume-functie\n");
-		break;
+	int i = 0;
+	for (i = 0; i < n; i++) {
+		if (data[i].id == id) {
+			*pos = i;
+			return 0;
+		}
 	}
+
+	return -1;
 }
+
+int listsold(int id, Data* data, int n, int *pos)
+{
+	if (id != -1) {
+		int i = 0;
+		for (i = 0; i < n; i++) {
+			if (data[i].id == id) {
+				*pos = i;
+				return 0;
+			}
+		}
+	}
+
+	return -1;
+}
+
+void transfer(char *token) {}
 
 int main(int argc, char *argv[])
 {
@@ -188,6 +101,7 @@ int main(int argc, char *argv[])
 	
 	char *token;
 	int err;
+	int pos;
 
 	/* read data */
 	data = myread(argv[2], &dataN);
@@ -206,7 +120,7 @@ int main(int argc, char *argv[])
 	int fdmax;
 
 	if (argc < 3) {
-		printf("[Error] args lower then 3!\n");
+		printf("ERROR args lower then 3!\n");
 		exit(-1);
 	}
 
@@ -257,7 +171,20 @@ int main(int argc, char *argv[])
 			memset(buffer, 0 , BUFLEN);
 			fgets(buffer, BUFLEN - 1, stdin);
 
-			printf("Am citit mesajul:%s", buffer);
+			// quit server
+			if (strcmp("quit", buffer) == 0) {
+				close(sockfd);
+
+				for (int j = 0; j < n; j++) {
+					free(data[i].firstName);
+					free(data[i].lastName);
+					free(data[i].secretPassword);
+				}
+				
+				free(data);
+
+				return 0;
+			}
 			
 			n = strlen(buffer);
 			
@@ -298,32 +225,106 @@ int main(int argc, char *argv[])
 						n = recv(i, buffer, sizeof(buffer), 0);
 
 						if (n > 0) {
-							printf ("Am primit de la clientul de pe socketul %d, mesajul: %s", i, buffer);
-							printf("\tGonna send to %d, message: %s", i, buffer);
-							
-							token = strtok(buffer, " ");
 
-							if (!strcmp("login", token)) {
-								err = login(token, data, n);
-							} else if (!strcmp("logout", token)) {
-								logout();
-							} else if (!strcmp("listsold", token)) {
-								listsold();
-							} else if (!strcmp("transfer", token)) {
-								transfer(token);
-							} else if (!strcmp("quit", token)) {
-								quit();
+							printf ("\nDe la clientul - socketul %d, mesajul: %s", i, buffer);
+							
+							token = strtok(buffer, " \n");
+
+							// login
+							if (strcmp("login", buffer) == 0) {
+								err = login(token, data, n, &pos);
+
+								memset(buffer, 0 , BUFLEN);
+								strcpy(buffer, "IBANK> ");
+
+								// exista contul in baza de date
+								if (err >= 0) {
+									data[pos].id = getpid();
+									data[pos].c_id = ntohs(cli_addr.sin_port);
+
+									strcat(buffer, "Welcome ");
+									strcat(buffer, data[pos].firstName);
+									strcat(buffer, " ");
+									strcat(buffer, data[pos].lastName);
+									strcat(buffer, "\n\n");
+								} else if (err == -3) { // pin gresit
+									if (data[pos].tryLogin >= 3){
+										strcat(buffer, "-5 : Card blocat\n\n");
+
+										data[pos].lock = 1;
+									} else {
+										data[pos].tryLogin ++;
+										strcat(buffer, "-3 : Pin gresit\n\n");
+									}
+						
+								} else if (err == -4) { // nu exista contul
+									data[pos].tryLogin ++;
+
+									strcat(buffer, "-4 : Numar card inexistent\n\n");
+								}
+
+								aux = send(i, buffer, strlen(buffer) + 1, 0);
+								printf("\tGonna send to %d, message: %s", i, buffer);
+
+								if (aux < 0) {
+									printf("ERROR in send\n\n");
+									exit(-1);
+								}
+
 							}
 
+							// logout
+							if (strncmp("logout", buffer, strlen("logout")) == 0) {
+								pid_t id = getpid();
+
+								err = logout(ntohs(cli_addr.sin_port), data, n, &pos);
+
+								data[pos].id = 0;
+								data[pos].c_id = -1;
+
+								memset(buffer, 0 , BUFLEN);
+								strcpy(buffer, "IBANK> ");
+								strcat(buffer, "Deconectare de la bancomat\n\n");
+
+								aux = send(ntohs(cli_addr.sin_port), buffer, strlen(buffer) + 1, 0);
+								printf("\tGonna send to %d, message: %s", i, buffer);
+							}
+
+							// list sold
+							if (strncmp("listsold", buffer, strlen("listsold")) == 0) {
+								pid_t id = getpid();
+
+								if (id != 0) {
+									err = listsold(i, data, n, &pos);
+									
+									memset(buffer, 0 , BUFLEN);
+									sprintf(buffer, "IBANK> %.2lf\n\n", data[pos].sold);
+								}
+
+								aux = send(i, buffer, strlen(buffer) + 1, 0);
+								printf("\tGonna send to %d, message: %s", i, buffer);
+							} 
+
+							// furute features
+							if (strcmp("transfer", token) == 0) {
+								transfer(token);
+							}
+
+
+							// quit client from server
+							if (strcmp("quit", token) == 0) {
+								printf("[selectserver] Client on socket %d hung up\n", i);
+							
+								close(i); 
+
+								// scoatem din multimea de citire socketul
+								FD_CLR(i, &read_fds);
+							}
+
+							// reset error code
 							if (err < 0) {
 								getError(err);
 								err = 0;
-							}
-
-							aux = send(i, buffer, strlen(buffer), 0);
-							if (aux < 0) {
-								printf("ERROR in send\n");
-								exit(-1);
 							}
 						} else if (n == 0) {
 							// conexiunea s-a inchis

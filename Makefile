@@ -15,9 +15,11 @@ all: selectserver client
 
 # Compileaza server.c
 selectserver: selectserver.c
+	gcc selectserver.c utils.h -o selectserver
 
 # Compileaza client.c
 client: client.c
+	gcc client.c utils.h -o client
 
 .PHONY: clean run_server run_client
 
